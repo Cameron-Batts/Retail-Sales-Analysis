@@ -131,9 +131,11 @@ The dataset was used to:
 - support operational and analytical insight generation
 
 ---
+# Author
 
-## Portfolio
+Cameron Batts
 
-Portfolio Website: https://cameron-batts.github.io/
+GitHub: https://github.com/Cameron-Batts
 
-GitHub Profile: https://github.com/cameron-batts
+Portfolio: https://cameron-batts.github.io
+
