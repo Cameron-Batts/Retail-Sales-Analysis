@@ -132,10 +132,8 @@ The dataset was used to:
 
 ---
 
-# Author
+## Portfolio
 
-Cameron Batts
+Portfolio Website: https://cameron-batts.github.io/
 
-GitHub: https://github.com/Cameron-Batts
-
-Portfolio: https://cameronbatts.github.io
+GitHub Profile: https://github.com/cameron-batts
