@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Retail Sales Aggregation and Store-Type Comparison | Cameron Batts</title><style>body{margin:0;background:#f7f8fa;color:#152540;font:16px/1.65 system-ui}main{max-width:950px;margin:auto;padding:32px 24px}h1{font:bold 2.4rem Georgia}h2{border-bottom:2px solid #e8c97a;margin-top:36px}pre{padding:18px;background:white;border-left:3px solid #c9a84c;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}details{margin:16px 0}summary{cursor:pointer}p{overflow-wrap:anywhere}a{color:#1a3560}img{max-width:100%;height:auto}</style><main><a href="https://cameron-batts.github.io/">← Portfolio</a><h1>Retail Sales Aggregation and Store-Type Comparison</h1><p><strong>Cameron Batts</strong></p><h2>Problem</h2><p>Turn department-level sales into comparable store-week summaries using validated joins and pandas aggregation.</p><h2>Approach</h2><p>Read 421,570 department-week records and 45 store records, exclude holiday observations, validate the many-to-one store join, and sum sales by Store, Date and Type. Compare average store-week sales across store types.</p><h2>Results</h2><p>Recomputed nonholiday averages were $1,369,654.70 for Type A, $816,921.64 for Type B and $472,741.57 for Type C. The overall average was $1,041,256.38 across observed nonholiday store-weeks. These are descriptive differences, not causal effects of store type.</p><h2>Limitations</h2><p>Holiday weeks are excluded, so these figures do not describe full-year sales. Store size, location, department coverage and other confounders are not controlled. Negative sales records are retained. No forecasting, causal estimation or sales uplift was demonstrated.</p><h2>Data</h2><p>Data/sales.csv and Data/stores.csv are included. Dates are day/month/year. The original repository did not document an upstream source or redistribution license; provenance remains unverified.</p><h2>Verification</h2><p>Included-data code cells executed successfully during this update.</p><details><summary>Python code</summary><pre>
+import pandas as pd
+import numpy as np</pre></details><details><summary>Python code</summary><pre>from pathlib import Path
+project_root = Path.cwd().parent if Path.cwd().name in (&#x27;Notebook&#x27;, &#x27;Notebooks&#x27;) else Path.cwd()
+sales = pd.read_csv(project_root / &#x27;Data&#x27; / &#x27;sales.csv&#x27;)
+stores = pd.read_csv(project_root / &#x27;Data&#x27; / &#x27;stores.csv&#x27;)
+sales[&#x27;Date&#x27;] = pd.to_datetime(sales[&#x27;Date&#x27;], format=&#x27;%d/%m/%Y&#x27;)</pre></details><details><summary>Python code</summary><pre>stores.head()</pre></details><pre>   Store Type    Size
+0      1    A  151315
+1      2    A  202307
+2      3    B   37392
+3      4    A  205863
+4      5    B   34875
+</pre><details><summary>Python code</summary><pre>stores.tail()</pre></details><pre>    Store Type    Size
+40     41    A  196321
+41     42    C   39690
+42     43    C   41062
+43     44    C   39910
+44     45    B  118221
+</pre><details><summary>Python code</summary><pre>stores.info()</pre></details><pre>&lt;class &#x27;pandas.core.frame.DataFrame&#x27;&gt;
+RangeIndex: 45 entries, 0 to 44
+Data columns (total 3 columns):
+ #   Column  Non-Null Count  Dtype 
+---  ------  --------------  ----- 
+ 0   Store   45 non-null     int64 
+ 1   Type    45 non-null     object
+ 2   Size    45 non-null     int64 
+dtypes: int64(2), object(1)
+memory usage: 1.2+ KB
+</pre><details><summary>Python code</summary><pre>stores[&#x27;Type&#x27;].value_counts()</pre></details><pre>Type
+A    22
+B    17
+C     6
+Name: count, dtype: int64
+</pre><p>We see there are different type of store from A,B, &amp; C. Additionally we see that each store varies in the size of the store.</p><details><summary>Python code</summary><pre>sales[&#x27;IsHoliday&#x27;] = sales[&#x27;IsHoliday&#x27;].astype(int)</pre></details><details><summary>Python code</summary><pre>sales.query(&quot;IsHoliday == 0&quot;)</pre></details><pre>        Store  Dept       Date  Weekly_Sales  IsHoliday
+0           1     1 2010-02-05      24924.50          0
+2           1     1 2010-02-19      41595.55          0
+3           1     1 2010-02-26      19403.54          0
+4           1     1 2010-03-05      21827.90          0
+5           1     1 2010-03-12      21043.39          0
+...       ...   ...        ...           ...        ...
+421565     45    98 2012-09-28        508.37          0
+421566     45    98 2012-10-05        628.10          0
+421567     45    98 2012-10-12       1061.02          0
+421568     45    98 2012-10-19        760.01          0
+421569     45    98 2012-10-26       1076.80          0
+
+[391909 rows x 5 columns]
+</pre><details><summary>Python code</summary><pre>sales_2b = sales.loc[sales[&#x27;IsHoliday&#x27;] == 0]
+
+
+sales_2b.head()
+</pre></details><pre>   Store  Dept       Date  Weekly_Sales  IsHoliday
+0      1     1 2010-02-05      24924.50          0
+2      1     1 2010-02-19      41595.55          0
+3      1     1 2010-02-26      19403.54          0
+4      1     1 2010-03-05      21827.90          0
+5      1     1 2010-03-12      21043.39          0
+</pre><p>Merge stores and sales Used a left-join which attaches store information to each sales row</p><p>A left join retains every selected sales record. Validating many-to-one cardinality prevents duplicate store keys from multiplying sales. An inner join would drop only unmatched records; it does not inherently lose rows when all keys match.</p><details><summary>Python code</summary><pre># Merge stores and sales
+
+# Used a left-join which attaches store information to each sales row
+sales_stores = sales_2b.merge(stores, on=&#x27;Store&#x27;, how=&#x27;left&#x27;, validate=&#x27;many_to_one&#x27;) 
+
+sales_stores.head()</pre></details><pre>   Store  Dept       Date  Weekly_Sales  IsHoliday Type    Size
+0      1     1 2010-02-05      24924.50          0    A  151315
+1      1     1 2010-02-19      41595.55          0    A  151315
+2      1     1 2010-02-26      19403.54          0    A  151315
+3      1     1 2010-03-05      21827.90          0    A  151315
+4      1     1 2010-03-12      21043.39          0    A  151315
+</pre><details><summary>Python code</summary><pre>
+# Create a new dataframe that summarizes weekly sales by Store, Date, and Type
+weekly_store_sales = (sales_stores
+                    # Group the data by Store, Date, and store Type
+                      .groupby([&#x27;Store&#x27;, &#x27;Date&#x27;, &#x27;Type&#x27;])[&#x27;Weekly_Sales&#x27;]
+                      # For each group, sum the Weekly_Sales values
+                      .sum()
+                      # Turn the grouped index back into regular columns in a new dataframe
+                      .reset_index()
+                     )</pre></details><details><summary>Python code</summary><pre>print(&#x27;Average nonholiday store-week sales:&#x27;, weekly_store_sales[&#x27;Weekly_Sales&#x27;].mean())
+print(weekly_store_sales.groupby(&#x27;Type&#x27;)[&#x27;Weekly_Sales&#x27;].mean())</pre></details><pre>Average nonholiday store-week sales: 1041256.3802088555
+Type
+A    1.369655e+06
+B    8.169216e+05
+C    4.727416e+05
+Name: Weekly_Sales, dtype: float64
+</pre><p>**Observations**</p><p>Recomputed nonholiday averages were $1,369,654.70 for Type A, $816,921.64 for Type B and $472,741.57 for Type C. The overall average was $1,041,256.38 across observed nonholiday store-weeks. These are descriptive differences, not causal effects of store type. Holiday weeks are excluded, so these figures do not describe full-year sales. Store size, location, department coverage and other confounders are not controlled. Negative sales records are retained. No forecasting, causal estimation or sales uplift was demonstrated.</p><details><summary>Python code</summary><pre>Chained_Weekly_Sales = (
+    sales
+    .query(&quot;IsHoliday == 0&quot;)                      # filter out holiday weeks
+    .merge(stores, on=&#x27;Store&#x27;, how=&#x27;left&#x27;, validate=&#x27;many_to_one&#x27;)       # merge with store info
+    .groupby([&#x27;Store&#x27;, &#x27;Date&#x27;, &#x27;Type&#x27;])[&#x27;Weekly_Sales&#x27;]
+    .sum()                                       # total weekly sales per Store, Date, and Type
+    .reset_index()
+)
+
+Chained_Weekly_Sales.head()
+</pre></details><pre>   Store       Date Type  Weekly_Sales
+0      1 2010-02-05    A    1643690.90
+1      1 2010-02-19    A    1611968.17
+2      1 2010-02-26    A    1409727.59
+3      1 2010-03-05    A    1554806.68
+4      1 2010-03-12    A    1439541.59
+</pre></main></html>
